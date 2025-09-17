@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mashina o'yini</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #111; }
+    #overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.8); color: white; font-size: 24px;
+      z-index: 10;
+    }
+    button {
+      padding: 10px 20px; margin-top: 20px; font-size: 20px; border-radius: 10px;
+      border: none; background: #28a745; color: white; cursor: pointer;
+    }
+    #controls {
+      position: absolute; bottom: 20px; width: 100%; display: flex;
+      justify-content: space-between; padding: 0 20px; z-index: 5;
+    }
+    .ctrl-btn {
+      background: rgba(255,255,255,0.3);
+      border: 2px solid white;
+      color: white;
+      font-size: 30px;
+      border-radius: 50%;
+      width: 60px; height: 60px;
+      display: flex; justify-content: center; align-items: center;
+      user-select: none;
+    }
+    #score {
+      position: absolute; top: 10px; left: 10px;
+      font-size: 22px; color: white; font-weight: bold;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+<div id="overlay">
+  <h1>Mashina O'yini</h1>
+  <button onclick="startGame()">Boshlash</button>
+</div>
+
+<div id="controls" style="display:none;">
+  <div class="ctrl-btn" onclick="moveLeft()">⬅</div>
+  <div class="ctrl-btn" onclick="moveRight()">➡</div>
+</div>
+
+<div id="score" style="display:none;">Achko: 0</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+let scene, camera, renderer, player, obstacles = [], speed = 0.1, gameOver=false;
+const lanes = [-2,-1,0,1,2]; // 5 qator
+let currentLaneIndex = 2; // markaz
+let score = 0;
+
+function startGame(){
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('controls').style.display = 'flex';
+  document.getElementById('score').style.display = 'block';
+  init();
+  animate();
+}
+
+function init(){
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Player car
+  const geometry = new THREE.BoxGeometry(1,0.5,2);
+  const material = new THREE.MeshBasicMaterial({color:0x00ff00});
+  player = new THREE.Mesh(geometry, material);
+  player.position.z = 5;
+  player.position.x = lanes[currentLaneIndex];
+  scene.add(player);
+
+  // Lights
+  const light = new THREE.AmbientLight(0xffffff, 1);
+  scene.add(light);
+
+  camera.position.y = 3;
+  camera.position.z = 10;
+  camera.rotation.x = -0.3;
+
+  spawnObstacles();
+  document.addEventListener('keydown', onKeyDown);
+}
+
+function spawnObstacles(){
+  for(let i=0;i<20;i++){ 
+    let geom = new THREE.BoxGeometry(Math.random()>0.7?2:1,0.5,2);
+    let mat = new THREE.MeshBasicMaterial({color: Math.random()>0.5?0xff0000:0x0000ff});
+    let obs = new THREE.Mesh(geom, mat);
+    obs.position.x = lanes[Math.floor(Math.random()*lanes.length)];
+    obs.position.z = -i*10;
+    scene.add(obs);
+    obstacles.push(obs);
+  }
+}
+
+function onKeyDown(e){
+  if(gameOver) return;
+  if(e.key === "ArrowLeft") moveLeft();
+  if(e.key === "ArrowRight") moveRight();
+}
+
+function moveLeft(){
+  if(currentLaneIndex>0){
+    currentLaneIndex--;
+    player.position.x = lanes[currentLaneIndex];
+  }
+}
+function moveRight(){
+  if(currentLaneIndex<lanes.length-1){
+    currentLaneIndex++;
+    player.position.x = lanes[currentLaneIndex];
+  }
+}
+
+function animate(){
+  if(gameOver) return;
+  requestAnimationFrame(animate);
+  obstacles.forEach(obs=>{
+    obs.position.z += speed;
+    if(obs.position.z>10){
+      obs.position.z = -100;
+      obs.position.x = lanes[Math.floor(Math.random()*lanes.length)];
+      score++;
+      document.getElementById('score').innerText = "Achko: " + score;
+
+      // 🔥 Har 10 achkoda tezlik oshadi
+      if(score % 10 === 0){
+        speed += 0.02; // sekin-asta tezlashadi
+      }
+    }
+    if(Math.abs(obs.position.z - player.position.z)<1.5 &&
+       Math.abs(obs.position.x - player.position.x)<1){
+      endGame();
+    }
+  });
+  renderer.render(scene,camera);
+}
+
+function endGame(){
+  gameOver=true;
+  document.getElementById('overlay').style.display='flex';
+  document.getElementById('overlay').innerHTML='<h1>O\'yin tugadi!</h1><p>Achko: '+score+'</p><button onclick="location.reload()">Qayta o\'yna</button>';
+}
+</script>
+</body>
+</html>
